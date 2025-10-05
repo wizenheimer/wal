@@ -1,0 +1,7 @@
+*.proto linguist-detectable=false
+*.pb.go linguist-generated=true
+Makefile linguist-generated=true
+go.sum linguist-generated=true
+*.html linguist-detectable=false
+*.yml linguist-detectable=false
+*.yaml linguist-detectable=false
