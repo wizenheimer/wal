@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>WAL - Write-Ahead Log Implementation in Go</title>
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css"
+      rel="stylesheet"
+    />
+    <style>
+      body {
+        font-family: monospace;
+        line-height: 1.6;
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 2rem;
+        color: #333;
+      }
+
+      pre {
+        background: #f8f8f8;
+        padding: 1.5rem;
+        overflow-x: auto;
+        border-radius: 4px;
+        margin: 1.5rem 0;
+        font-size: 13px;
+        line-height: 1.5;
+      }
+
+      code {
+        background: #f5f5f5;
+        padding: 0.2rem 0.4rem;
+        border-radius: 3px;
+      }
+
+      h1,
+      h2 {
+        border-bottom: 1px solid #eee;
+        padding-bottom: 0.3rem;
+      }
+
+      .header {
+        margin-bottom: 2rem;
+      }
+
+      .header-button {
+        color: #333;
+        text-decoration: none;
+        border: 1px solid #333;
+        padding: 0.5rem 1rem;
+        display: inline-block;
+        margin-top: 1rem;
+      }
+
+      .header-button:hover {
+        background: #333;
+        color: #fff;
+      }
+
+      .header-button.inverse {
+        background: #333;
+        color: #fff;
+      }
+
+      .header-button.inverse:hover {
+        background: #fff;
+        color: #333;
+      }
+
+      /* Override some Prism styles to match your design */
+      pre[class*="language-"] {
+        background: #f5f5f5;
+        margin: 0;
+        border: 1px solid #ddd;
+      }
+
+      code[class*="language-"] {
+        background: transparent;
+        padding: 0;
+        border-radius: 0;
+      }
+
+      /* Grayscale theme for Prism */
+      code[class*="language-"],
+      pre[class*="language-"] {
+        color: #383a42;
+        text-shadow: none;
+      }
+
+      .token.comment,
+      .token.prolog,
+      .token.doctype,
+      .token.cdata {
+        color: #a0a1a7;
+        font-style: italic;
+      }
+
+      .token.function,
+      .token.keyword {
+        color: #a626a4;
+        font-weight: normal;
+      }
+
+      .token.string {
+        color: #50a14f;
+      }
+
+      .token.number {
+        color: #986801;
+        font-weight: normal;
+      }
+
+      .token.property {
+        color: #e45649;
+      }
+
+      .token.punctuation {
+        color: #383a42;
+      }
+
+      .token.operator {
+        color: #0184bc;
+        font-weight: normal;
+      }
+
+      .token.constant {
+        color: #986801;
+        font-weight: normal;
+      }
+
+      .token.url {
+        color: #4078f2;
+        text-decoration: underline;
+      }
+
+      code {
+        font-size: 12px;
+      }
+
+      /* Style for bash/shell commands */
+      .language-bash .token.operator,
+      .language-bash .token.parameter {
+        color: #e45649;
+      }
+
+      .language-bash .token.function {
+        color: #4078f2;
+        font-weight: normal;
+      }
+
+      /* Update the -H and -d parameter colors */
+      .token.parameter {
+        color: #986801;
+      }
+
+      /* Adjust spacing in code blocks */
+      pre code {
+        font-family: Monaco, Consolas, "Courier New", monospace;
+        font-size: 13px;
+        line-height: 1.5;
+      }
+
+      /* Remove padding from code elements inside pre */
+      pre code.language-bash,
+      pre code.language-go {
+        padding: 0;
+        background: transparent;
+      }
+
+      /* Override Prism styles */
+      code[class*="language-"],
+      pre[class*="language-"] {
+        text-shadow: none;
+        font-family: Monaco, Consolas, "Courier New", monospace;
+        font-size: 13px;
+        line-height: 1.5;
+      }
+
+      /* Collapsible sections styling */
+      details {
+        margin: 1rem 0;
+        padding: 0.5rem;
+        border: 1px solid #eee;
+        border-radius: 4px;
+      }
+
+      details summary {
+        cursor: pointer;
+        padding: 0.5rem;
+        font-weight: bold;
+      }
+
+      details summary:hover {
+        background: #f5f5f5;
+      }
+
+      details[open] summary {
+        border-bottom: 1px solid #eee;
+        margin-bottom: 1rem;
+      }
+
+      table {
+        border-collapse: collapse;
+        width: 100%;
+        margin: 1rem 0;
+      }
+
+      th,
+      td {
+        border: 1px solid #ddd;
+        padding: 0.5rem;
+        text-align: left;
+      }
+
+      th {
+        background: #f5f5f5;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="header">
+      <h1>WAL</h1>
+      <p>
+        A production-ready, high-performance Write-Ahead Log (WAL) library for
+        Go, designed for building reliable and durable data systems.
+      </p>
+      <div style="display: flex; gap: 1rem">
+        <a href="https://github.com/wizenheimer/wal" class="header-button"
+          >View on GitHub</a
+        >
+        <a
+          href="https://pkg.go.dev/github.com/wizenheimer/wal"
+          target="_blank"
+          class="header-button inverse"
+          >Documentation →</a
+        >
+      </div>
+    </div>
+
+    <h2>Overview</h2>
+    <p>
+      This WAL implementation provides durability and crash recovery for your
+      applications by ensuring all changes are written to persistent storage
+      before being applied. It's designed with a modular architecture that
+      supports multiple storage backends, efficient segment management, and
+      checkpoint-based recovery.
+    </p>
+
+    <h2>Features</h2>
+    <ul>
+      <li>
+        <strong>Durable Writes</strong> - All entries are persisted to disk with
+        configurable fsync behavior
+      </li>
+      <li>
+        <strong>Segment Management</strong> - Automatic log rotation and cleanup
+        with configurable size limits
+      </li>
+      <li>
+        <strong>Checkpoint Support</strong> - Fast recovery by resuming from
+        last checkpoint instead of replaying entire log
+      </li>
+      <li>
+        <strong>LSN Tracking</strong> - Monotonic log sequence numbers for total
+        ordering of operations
+      </li>
+      <li>
+        <strong>CRC Validation</strong> - Built-in data integrity checking
+      </li>
+      <li>
+        <strong>Thread-Safe</strong> - Concurrent reads and writes with proper
+        locking
+      </li>
+      <li>
+        <strong>Pluggable Storage</strong> - Interface-based design supports
+        multiple storage backends
+      </li>
+      <li>
+        <strong>Background Syncing</strong> - Automatic periodic fsync with
+        configurable intervals
+      </li>
+      <li>
+        <strong>Streaming API</strong> - Memory-efficient entry-by-entry reading
+      </li>
+    </ul>
+
+    <h2>Quick Start</h2>
+    <h3>Installation</h3>
+    <pre><code class="language-bash">go get github.com/wizenheimer/wal</code></pre>
+
+    <h3>Basic Example</h3>
+    <pre><code class="language-go">package main
+
+import (
+    "log"
+    "github.com/wizenheimer/wal"
+)
+
+func main() {
+    // Create segment manager for file-based storage
+    segmentMgr, err := wal.NewFileSegmentManager("./wal_data")
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    // Configure WAL options
+    opts := wal.DefaultWALOptions()
+    opts.MaxSegmentSize = 64 * 1024 * 1024  // 64MB per segment
+    opts.MaxSegments = 10                    // Keep 10 segments max
+    opts.SyncInterval = 200 * time.Millisecond
+
+    // Open WAL
+    w, err := wal.Open(segmentMgr, opts)
+    if err != nil {
+        log.Fatal(err)
+    }
+    defer w.Close()
+
+    // Write entries (LSN is managed automatically)
+    lsn, err := w.WriteEntry([]byte("operation data"))
+    if err != nil {
+        log.Fatal(err)
+    }
+    log.Printf("Written entry with LSN: %d", lsn)
+
+    // Create checkpoint periodically
+    checkpointLSN, err := w.WriteCheckpoint([]byte("state snapshot"))
+    if err != nil {
+        log.Fatal(err)
+    }
+    log.Printf("Created checkpoint at LSN: %d", checkpointLSN)
+
+    // Read entries from last checkpoint (for recovery)
+    entries, err := w.ReadFromCheckpoint()
+    if err != nil {
+        log.Fatal(err)
+    }
+    log.Printf("Read %d entries from checkpoint", len(entries))
+}</code></pre>
+    <p style="color: #888; font-size: 12px; margin: 0.5rem 0 1.5rem">
+      ↑ This example demonstrates basic WAL operations including writing
+      entries, creating checkpoints, and reading for recovery.
+    </p>
+
+    <h2>Architecture</h2>
+    <h3>Component Hierarchy</h3>
+    <pre style="background: #fff; border: 1px solid #ddd; padding: 1rem">
+┌──────────────────────────────────────────────────────────┐
+│                     Application                          │
+│              (Your database, key-value store, etc.)      │
+└─────────────────────────┬────────────────────────────────┘
+                          │
+                          ▼
+              ┌───────────────────────┐
+              │         WAL           │  ← Orchestrates everything
+              │  (Core coordinator)   │    Manages LSN, rotation
+              └──────────┬────────────┘
+                         │
+         ┌───────────────┴───────────────┐
+         ▼                               ▼
+┌────────────────────┐         ┌─────────────────────┐
+│  SegmentManager    │         │   EntryWriter       │
+│  (Where to store)  │         │   (How to serialize)│
+└────────┬───────────┘         └──────────┬──────────┘
+         │                                 │
+         │                                 ▼
+         │                     ┌──────────────────────┐
+         │                     │   EntryReader        │
+         │                     │   (How to read back) │
+         │                     └──────────────────────┘
+         │
+         ▼
+┌─────────────────┐
+│    Segments     │  ← Actual files/objects
+│  (Physical data)│     segment-0, segment-1, etc.
+└─────────────────┘</pre
+    >
+
+    <h2>Use Cases</h2>
+    <details>
+      <summary>Database Systems</summary>
+      <pre><code class="language-go">// Write operation to WAL before applying to database
+func (db *Database) ExecuteQuery(query string) error {
+    // Write to WAL first
+    lsn, err := db.wal.WriteEntry([]byte(query))
+    if err != nil {
+        return err
+    }
+
+    // Apply to database
+    err = db.applyQuery(query)
+    if err != nil {
+        // Can rollback using WAL
+        return err
+    }
+
+    return nil
+}
+
+// Recovery on startup
+func (db *Database) Recover() error {
+    entries, err := db.wal.ReadFromCheckpoint()
+    if err != nil {
+        return err
+    }
+
+    for _, entry := range entries {
+        if entry.IsCheckpoint != nil && *entry.IsCheckpoint {
+            // Restore from checkpoint
+            db.restoreState(entry.Data)
+        } else {
+            // Replay operation
+            db.applyQuery(string(entry.Data))
+        }
+    }
+
+    return nil
+}</code></pre>
+    </details>
+
+    <details>
+      <summary>Message Queue</summary>
+      <pre><code class="language-go">type Queue struct {
+    wal      *wal.WAL
+    messages []Message
+}
+
+func (q *Queue) Enqueue(msg Message) error {
+    data, _ := json.Marshal(msg)
+    _, err := q.wal.WriteEntry(data)
+    if err != nil {
+        return err
+    }
+    q.messages = append(q.messages, msg)
+    return nil
+}
+
+func (q *Queue) Checkpoint() error {
+    state, _ := json.Marshal(q.messages)
+    _, err := q.wal.WriteCheckpoint(state)
+    return err
+}</code></pre>
+    </details>
+
+    <details>
+      <summary>State Machine Replication</summary>
+      <pre><code class="language-go">type StateMachine struct {
+    wal   *wal.WAL
+    state map[string]string
+}
+
+func (sm *StateMachine) Apply(command Command) error {
+    // Log command
+    data, _ := json.Marshal(command)
+    _, err := sm.wal.WriteEntry(data)
+    if err != nil {
+        return err
+    }
+
+    // Execute command
+    sm.executeCommand(command)
+    return nil
+}</code></pre>
+    </details>
+
+    <h2>Configuration</h2>
+    <h3>WAL Options</h3>
+    <pre><code class="language-go">type WALOptions struct {
+    MaxSegmentSize int64          // Max bytes per segment (default: 4MB)
+    MaxSegments    int             // Max segments to keep (default: 10)
+    SyncInterval   time.Duration   // Auto-sync interval (default: 3s)
+    EnableFsync    bool            // Whether to fsync (default: true)
+}</code></pre>
+
+    <h3>Tuning Recommendations</h3>
+    <table>
+      <tr>
+        <th>Parameter</th>
+        <th>Environment</th>
+        <th>Recommended Value</th>
+      </tr>
+      <tr>
+        <td><strong>MaxSegmentSize</strong></td>
+        <td>SSD</td>
+        <td>64-128 MB</td>
+      </tr>
+      <tr>
+        <td></td>
+        <td>HDD</td>
+        <td>256-512 MB</td>
+      </tr>
+      <tr>
+        <td></td>
+        <td>Cloud (S3)</td>
+        <td>100-500 MB</td>
+      </tr>
+      <tr>
+        <td><strong>MaxSegments</strong></td>
+        <td>Development</td>
+        <td>3-5 segments</td>
+      </tr>
+      <tr>
+        <td></td>
+        <td>Production</td>
+        <td>20-50 segments</td>
+      </tr>
+      <tr>
+        <td><strong>SyncInterval</strong></td>
+        <td>Financial systems</td>
+        <td>10-50ms</td>
+      </tr>
+      <tr>
+        <td></td>
+        <td>General apps</td>
+        <td>100-500ms</td>
+      </tr>
+      <tr>
+        <td></td>
+        <td>Analytics</td>
+        <td>1-5s</td>
+      </tr>
+    </table>
+
+    <h2>Performance Characteristics</h2>
+    <h3>Write Throughput vs Sync Strategy</h3>
+    <table>
+      <tr>
+        <th>Strategy</th>
+        <th>Throughput</th>
+        <th>Latency</th>
+        <th>Data Loss Risk</th>
+      </tr>
+      <tr>
+        <td>Sync every write</td>
+        <td>~1,000 writes/sec</td>
+        <td>~1ms</td>
+        <td>0 entries</td>
+      </tr>
+      <tr>
+        <td>Sync every 100 writes</td>
+        <td>~50,000 writes/sec</td>
+        <td>~20μs</td>
+        <td>100 entries max</td>
+      </tr>
+      <tr>
+        <td>Sync on timer (200ms)</td>
+        <td>~100,000 writes/sec</td>
+        <td>~10μs</td>
+        <td>200ms of data</td>
+      </tr>
+    </table>
+
+    <h2>API Reference</h2>
+    <details>
+      <summary>Core WAL API</summary>
+      <ul>
+        <li>
+          <code
+            >Open(segmentMgr SegmentManager, opts WALOptions) (*WAL,
+            error)</code
+          >
+          - Opens or creates a WAL with the given segment manager and options
+        </li>
+        <li>
+          <code>WriteEntry(data []byte) (uint64, error)</code> - Writes a
+          regular entry to the WAL. Returns the assigned LSN
+        </li>
+        <li>
+          <code>WriteCheckpoint(data []byte) (uint64, error)</code> - Writes a
+          checkpoint entry containing application state. Syncs before writing
+        </li>
+        <li>
+          <code>ReadAll() ([]*WAL_Entry, error)</code> - Reads all entries from
+          all segments
+        </li>
+        <li>
+          <code>ReadFromCheckpoint() ([]*WAL_Entry, error)</code> - Reads
+          entries starting from the last checkpoint
+        </li>
+        <li>
+          <code>Sync() error</code> - Manually flushes buffers and syncs to disk
+        </li>
+        <li>
+          <code>Close() error</code> - Closes the WAL, syncing all data and
+          stopping background goroutines
+        </li>
+      </ul>
+    </details>
+
+    <details>
+      <summary>SegmentManager Interface</summary>
+      <pre><code class="language-go">type SegmentManager interface {
+    CreateSegment(id int) (io.WriteCloser, error)
+    OpenSegment(id int) (io.ReadCloser, error)
+    ListSegments() ([]int, error)
+    DeleteSegment(id int) error
+    CurrentSegmentSize(id int) (int64, error)
+}</code></pre>
+      <p>Built-in implementations:</p>
+      <ul>
+        <li>
+          <strong>FileSegmentManager</strong> - Local filesystem storage
+          (default)
+        </li>
+        <li>Custom implementations can be created for S3, Redis, etc.</li>
+      </ul>
+    </details>
+
+    <h2>Best Practices</h2>
+    <ul>
+      <li>
+        <strong>Use Checkpoints</strong> - Create checkpoints periodically to
+        bound recovery time
+        <pre><code class="language-go">// Every 10,000 operations or 5 minutes
+if operationCount >= 10000 || time.Since(lastCheckpoint) > 5*time.Minute {
+    w.WriteCheckpoint(serializeState())
+}</code></pre>
+      </li>
+      <li>
+        <strong>Tune Sync Strategy</strong> - Balance durability vs throughput
+        based on requirements
+        <pre><code class="language-go">// Financial: High durability
+opts.SyncInterval = 50 * time.Millisecond
+
+// Analytics: High throughput
+opts.SyncInterval = 5 * time.Second</code></pre>
+      </li>
+      <li>
+        <strong>Handle Errors Gracefully</strong> - Always check errors and
+        implement recovery logic
+        <pre><code class="language-go">if _, err := w.WriteEntry(data); err != nil {
+    log.Error("WAL write failed", "error", err)
+    // Implement retry logic or alert
+}</code></pre>
+      </li>
+      <li>
+        <strong>Monitor Disk Usage</strong> - Set appropriate segment limits
+        <pre><code class="language-go">// Max WAL size = MaxSegmentSize * MaxSegments
+// Example: 64MB * 10 = 640MB max</code></pre>
+      </li>
+      <li>
+        <strong>Clean Shutdown</strong> - Always close WAL properly
+        <pre><code class="language-go">defer w.Close()  // Ensures final sync</code></pre>
+      </li>
+    </ul>
+
+    <h2>Examples</h2>
+    <p>See the <code>example/</code> directory for comprehensive examples:</p>
+    <ul>
+      <li><strong>basic/</strong> - Fundamental read/write operations</li>
+      <li><strong>checkpoint/</strong> - Checkpoint creation and recovery</li>
+      <li>
+        <strong>streaming/</strong> - Efficient streaming for large datasets
+      </li>
+      <li>
+        <strong>error_handling/</strong> - CRC validation and error recovery
+      </li>
+      <li><strong>segment_manager/</strong> - Multi-segment management</li>
+      <li><strong>wal_api/</strong> - Complete production example</li>
+    </ul>
+
+    <h2>Documentation</h2>
+    <ul>
+      <li>
+        <a href="docs/ARCHITECTURE.md">ARCHITECTURE.md</a> - Detailed component
+        architecture
+      </li>
+      <li>
+        <a href="docs/CONCEPT.md">CONCEPT.md</a> - Core concepts and operations
+      </li>
+      <li>
+        <a href="docs/TIMELINE.md">TIMELINE.md</a> - Visual timelines and
+        examples
+      </li>
+      <li>
+        <a href="example/README.md">Examples</a> - Comprehensive usage examples
+      </li>
+    </ul>
+
+    <footer style="margin-top: 4rem">
+      <p>Built by <a href="https://github.com/wizenheimer">wizenheimer</a></p>
+    </footer>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+  </body>
+</html>
