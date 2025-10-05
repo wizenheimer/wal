@@ -7,13 +7,22 @@ import (
 	"io"
 )
 
-// EntryReader reads WAL entries from an underlying reader
+// EntryReader reads WAL entries from an underlying reader.
+//
+// EntryReader implementations handle the deserialization of WAL entries
+// from their binary format.
 type EntryReader interface {
-	// ReadEntry reads the next entry, returns io.EOF when done
+	// ReadEntry reads the next entry, returns io.EOF when done.
 	ReadEntry() (*WAL_Entry, error)
 }
 
-// BinaryEntryReader reads entries in binary format with length prefix
+// BinaryEntryReader reads entries in binary format with a length prefix.
+//
+// The binary format consists of:
+//   - 4 bytes: uint32 length of the protobuf-encoded entry (little-endian)
+//   - N bytes: protobuf-encoded WAL_Entry
+//
+// BinaryEntryReader uses buffering for efficient reading of sequential entries.
 type BinaryEntryReader struct {
 	// r is the underlying reader
 	r io.Reader
@@ -21,6 +30,9 @@ type BinaryEntryReader struct {
 	br *bufio.Reader
 }
 
+// NewBinaryEntryReader creates a new BinaryEntryReader that reads from r.
+//
+// The reader is buffered with a 4KB buffer for optimal performance.
 func NewBinaryEntryReader(r io.Reader) *BinaryEntryReader {
 	return &BinaryEntryReader{
 		r:  r,
@@ -28,6 +40,12 @@ func NewBinaryEntryReader(r io.Reader) *BinaryEntryReader {
 	}
 }
 
+// ReadEntry reads the next WAL entry from the reader.
+//
+// ReadEntry first reads a 4-byte length prefix, then reads that many bytes
+// and unmarshals them as a protobuf-encoded WAL_Entry.
+//
+// Returns io.EOF when no more entries are available.
 func (ber *BinaryEntryReader) ReadEntry() (*WAL_Entry, error) {
 	// Read length prefix
 	var size uint32

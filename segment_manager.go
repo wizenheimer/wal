@@ -10,21 +10,33 @@ import (
 
 var segmentPrefix = "segment-"
 
-// SegmentManager handles segment file operations
+// SegmentManager handles segment file operations for the WAL.
+//
+// SegmentManager provides an abstraction for managing the individual segment
+// files that make up the WAL, allowing for different storage backends (filesystem,
+// cloud storage, etc.).
 type SegmentManager interface {
-	// CreateSegment creates a new segment with the given ID
+	// CreateSegment creates a new segment with the given ID and returns a writer.
+	// If the segment already exists, it is opened in append mode.
 	CreateSegment(id int) (io.WriteCloser, error)
-	// OpenSegment opens an existing segment for reading
+
+	// OpenSegment opens an existing segment for reading.
 	OpenSegment(id int) (io.ReadCloser, error)
-	// ListSegments returns all segment IDs in order
+
+	// ListSegments returns all segment IDs in ascending order.
 	ListSegments() ([]int, error)
-	// DeleteSegment removes a segment
+
+	// DeleteSegment removes a segment file.
 	DeleteSegment(id int) error
-	// CurrentSegmentSize returns the size of the current segment
+
+	// CurrentSegmentSize returns the current size in bytes of the segment.
 	CurrentSegmentSize(id int) (int64, error)
 }
 
-// FileSegmentManager implements SegmentManager for filesystem
+// FileSegmentManager implements SegmentManager for filesystem storage.
+//
+// Segments are stored as files named "segment-N" where N is the segment ID.
+// FileSegmentManager is safe for concurrent use.
 type FileSegmentManager struct {
 	// directory is the directory to store the segments
 	directory string
@@ -32,6 +44,10 @@ type FileSegmentManager struct {
 	mu sync.RWMutex
 }
 
+// NewFileSegmentManager creates a new FileSegmentManager for the given directory.
+//
+// The directory is created if it doesn't exist. All segment files will be stored
+// in this directory with the naming pattern "segment-N".
 func NewFileSegmentManager(directory string) (*FileSegmentManager, error) {
 	if err := os.MkdirAll(directory, 0755); err != nil {
 		return nil, fmt.Errorf("failed to create directory: %w", err)
@@ -39,6 +55,10 @@ func NewFileSegmentManager(directory string) (*FileSegmentManager, error) {
 	return &FileSegmentManager{directory: directory}, nil
 }
 
+// CreateSegment creates or opens a segment file for writing in append mode.
+//
+// The file is opened with O_CREATE|O_WRONLY|O_APPEND flags, allowing writes
+// to resume from the end of an existing segment.
 func (fsm *FileSegmentManager) CreateSegment(id int) (io.WriteCloser, error) {
 	fsm.mu.Lock()
 	defer fsm.mu.Unlock()
@@ -51,6 +71,7 @@ func (fsm *FileSegmentManager) CreateSegment(id int) (io.WriteCloser, error) {
 	return file, nil
 }
 
+// OpenSegment opens an existing segment file for reading.
 func (fsm *FileSegmentManager) OpenSegment(id int) (io.ReadCloser, error) {
 	fsm.mu.RLock()
 	defer fsm.mu.RUnlock()
@@ -63,6 +84,10 @@ func (fsm *FileSegmentManager) OpenSegment(id int) (io.ReadCloser, error) {
 	return file, nil
 }
 
+// ListSegments returns all segment IDs in ascending order.
+//
+// Segments are discovered by globbing for files matching "segment-*" in the
+// directory and extracting the numeric IDs.
 func (fsm *FileSegmentManager) ListSegments() ([]int, error) {
 	fsm.mu.RLock()
 	defer fsm.mu.RUnlock()
@@ -95,6 +120,7 @@ func (fsm *FileSegmentManager) ListSegments() ([]int, error) {
 	return ids, nil
 }
 
+// DeleteSegment removes a segment file from the filesystem.
 func (fsm *FileSegmentManager) DeleteSegment(id int) error {
 	fsm.mu.Lock()
 	defer fsm.mu.Unlock()
@@ -106,6 +132,7 @@ func (fsm *FileSegmentManager) DeleteSegment(id int) error {
 	return nil
 }
 
+// CurrentSegmentSize returns the current size in bytes of the segment file.
 func (fsm *FileSegmentManager) CurrentSegmentSize(id int) (int64, error) {
 	fsm.mu.RLock()
 	defer fsm.mu.RUnlock()

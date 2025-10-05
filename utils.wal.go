@@ -7,7 +7,9 @@ import (
 	"io"
 )
 
-// calculateCRC calculates the CRC32 of the data and the log sequence number
+// calculateCRC calculates the CRC32 checksum of the data and log sequence number.
+//
+// The CRC is computed over both the entry data and LSN to detect corruption.
 func calculateCRC(data []byte, lsn uint64) uint32 {
 	h := crc32.NewIEEE()
 	h.Write(data)
@@ -15,8 +17,9 @@ func calculateCRC(data []byte, lsn uint64) uint32 {
 	return h.Sum32()
 }
 
-// NewEntry creates a new WAL entry with the given LSN and data
-// It automatically calculates and sets the CRC
+// NewEntry creates a new WAL entry with the given LSN and data.
+//
+// The CRC checksum is automatically calculated and set for the entry.
 func NewEntry(lsn uint64, data []byte) *WAL_Entry {
 	entry := &WAL_Entry{
 		LogSequenceNumber: lsn,
@@ -26,8 +29,9 @@ func NewEntry(lsn uint64, data []byte) *WAL_Entry {
 	return entry
 }
 
-// NewCheckpointEntry creates a new checkpoint WAL entry with the given LSN and data
-// It automatically calculates and sets the CRC and marks it as a checkpoint
+// NewCheckpointEntry creates a new checkpoint WAL entry with the given LSN and data.
+//
+// The CRC checksum is automatically calculated and the entry is marked as a checkpoint.
 func NewCheckpointEntry(lsn uint64, data []byte) *WAL_Entry {
 	entry := &WAL_Entry{
 		LogSequenceNumber: lsn,
@@ -39,8 +43,10 @@ func NewCheckpointEntry(lsn uint64, data []byte) *WAL_Entry {
 	return entry
 }
 
-// VerifyEntry verifies the CRC32 of an entry
-// It returns an error if the CRC32 mismatch
+// VerifyEntry verifies the CRC32 checksum of an entry.
+//
+// Returns an error if the computed CRC doesn't match the entry's stored CRC,
+// indicating potential data corruption.
 func VerifyEntry(entry *WAL_Entry) error {
 	expectedCRC := calculateCRC(entry.Data, entry.LogSequenceNumber)
 	if entry.CRC != expectedCRC {
@@ -49,8 +55,10 @@ func VerifyEntry(entry *WAL_Entry) error {
 	return nil
 }
 
-// ReadAllEntries reads all the entries from the reader and verifies their CRC
-// It returns the entries and an error if the reading or verification fails
+// ReadAllEntries reads all entries from the reader and verifies their CRC checksums.
+//
+// Reading stops at io.EOF. Returns an error if reading fails or if any entry
+// has a CRC mismatch.
 func ReadAllEntries(r io.Reader) ([]*WAL_Entry, error) {
 	reader := NewBinaryEntryReader(r)
 	var entries []*WAL_Entry
@@ -75,8 +83,12 @@ func ReadAllEntries(r io.Reader) ([]*WAL_Entry, error) {
 	return entries, nil
 }
 
-// ReadEntriesWithCheckpoint reads all the entries from the reader and verifies their CRC
-// It returns the entries and the checkpoint LSN and an error if the reading or verification fails
+// ReadEntriesWithCheckpoint reads entries from the reader, tracking checkpoints.
+//
+// When a checkpoint is encountered, all previous entries are discarded and only
+// entries from the last checkpoint onwards are retained. This enables faster recovery.
+//
+// Returns the entries, the LSN of the last checkpoint (0 if none), and any error.
 func ReadEntriesWithCheckpoint(r io.Reader) ([]*WAL_Entry, uint64, error) {
 	reader := NewBinaryEntryReader(r)
 	var entries []*WAL_Entry

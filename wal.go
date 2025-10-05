@@ -1,3 +1,41 @@
+// Package wal provides a high-performance Write-Ahead Log (WAL) implementation for Go.
+//
+// This package implements the Write-Ahead Logging pattern, which ensures durability
+// and atomicity by writing all changes to a log before applying them. The WAL supports
+// segment rotation, checkpointing, and configurable sync intervals for optimal performance.
+//
+// Basic usage:
+//
+//	// Create a segment manager
+//	segMgr, err := wal.NewFileSegmentManager("./wal-data")
+//	if err != nil {
+//		log.Fatal(err)
+//	}
+//
+//	// Open or create the WAL
+//	w, err := wal.Open(segMgr, wal.DefaultWALOptions())
+//	if err != nil {
+//		log.Fatal(err)
+//	}
+//	defer w.Close()
+//
+//	// Write entries
+//	lsn, err := w.WriteEntry([]byte("data"))
+//	if err != nil {
+//		log.Fatal(err)
+//	}
+//
+//	// Create checkpoints
+//	cpLsn, err := w.WriteCheckpoint([]byte("checkpoint data"))
+//	if err != nil {
+//		log.Fatal(err)
+//	}
+//
+//	// Read entries back
+//	entries, err := w.ReadAll()
+//	if err != nil {
+//		log.Fatal(err)
+//	}
 package wal
 
 import (
@@ -37,13 +75,16 @@ func DefaultWALOptions() WALOptions {
 	}
 }
 
-// WAL implements the Write-Ahead Logging (WAL) pattern
-// It manages the writing of entries to a segment file
-// and provides a way to read the entries back in order
-// It also manages the segment file rotation and cleanup
-// It also provides a way to checkpoint the WAL
-// It also provides a way to read the entries back in order
-// It also provides a way to checkpoint the WAL
+// WAL implements the Write-Ahead Logging (WAL) pattern.
+//
+// WAL provides durable, ordered logging with support for:
+//   - Automatic segment rotation based on size limits
+//   - Background syncing at configurable intervals
+//   - Checkpointing for faster recovery
+//   - Thread-safe concurrent writes
+//   - Sequential reads from all segments or from last checkpoint
+//
+// The WAL is safe for concurrent use by multiple goroutines.
 type WAL struct {
 	// segmentMgr is the segment manager for the WAL
 	// it is used to create and manage the segment files
@@ -83,7 +124,15 @@ type WAL struct {
 	wg sync.WaitGroup
 }
 
-// Open opens or creates a WAL
+// Open opens or creates a WAL with the specified segment manager and options.
+//
+// If existing segments are found, Open resumes from the last segment and loads
+// the last LSN. If no segments exist, it creates a new one starting at segment 0.
+//
+// Open also starts a background goroutine that periodically syncs the WAL to disk
+// based on the configured SyncInterval.
+//
+// The returned WAL must be closed with Close() to ensure all data is flushed.
 func Open(segmentMgr SegmentManager, opts WALOptions) (*WAL, error) {
 	segments, err := segmentMgr.ListSegments()
 	if err != nil {
@@ -159,12 +208,27 @@ func (w *WAL) loadLastLSN() error {
 	return nil
 }
 
-// WriteEntry writes a new entry to the WAL
+// WriteEntry writes a new entry to the WAL and returns its Log Sequence Number (LSN).
+//
+// The LSN is a monotonically increasing identifier that uniquely identifies this entry.
+// WriteEntry automatically handles segment rotation when the current segment exceeds
+// MaxSegmentSize.
+//
+// This method is thread-safe and can be called concurrently from multiple goroutines.
 func (w *WAL) WriteEntry(data []byte) (uint64, error) {
 	return w.writeEntry(data, false)
 }
 
-// WriteCheckpoint writes a checkpoint entry
+// WriteCheckpoint writes a checkpoint entry to the WAL and returns its LSN.
+//
+// A checkpoint marks a known good state in the log. When reading with ReadFromCheckpoint,
+// only entries from the most recent checkpoint onwards are returned, allowing for faster
+// recovery by skipping earlier entries.
+//
+// WriteCheckpoint forces a sync before writing the checkpoint to ensure all prior entries
+// are durably stored.
+//
+// This method is thread-safe and can be called concurrently from multiple goroutines.
 func (w *WAL) WriteCheckpoint(data []byte) (uint64, error) {
 	return w.writeEntry(data, true)
 }
@@ -259,7 +323,12 @@ func (w *WAL) rotate() error {
 	return nil
 }
 
-// Sync flushes buffered writes and syncs to disk
+// Sync flushes buffered writes and syncs to disk if fsync is enabled.
+//
+// Sync is called automatically by the background sync loop at the configured
+// SyncInterval, but can also be called manually to ensure durability of recent writes.
+//
+// This method is thread-safe.
 func (w *WAL) Sync() error {
 	w.mu.Lock()
 	defer w.mu.Unlock()
@@ -291,7 +360,11 @@ func (w *WAL) syncLoop() {
 	}
 }
 
-// Close closes the WAL
+// Close gracefully shuts down the WAL, stopping the background sync loop
+// and flushing all buffered data to disk.
+//
+// Close must be called to ensure all data is durably stored. After Close is called,
+// the WAL should not be used.
 func (w *WAL) Close() error {
 	w.cancel()
 	w.wg.Wait()
@@ -306,7 +379,13 @@ func (w *WAL) Close() error {
 	return w.currentWriter.Close()
 }
 
-// ReadAll reads all entries from all segments
+// ReadAll reads all entries from all segments in order.
+//
+// This method reads every entry across all segment files, verifying CRC checksums
+// and returning them in LSN order. Use ReadFromCheckpoint for faster recovery that
+// skips entries before the last checkpoint.
+//
+// This method is safe to call while the WAL is actively being written to.
 func (w *WAL) ReadAll() ([]*WAL_Entry, error) {
 	segments, err := w.segmentMgr.ListSegments()
 	if err != nil {
@@ -334,7 +413,15 @@ func (w *WAL) ReadAll() ([]*WAL_Entry, error) {
 	return entries, nil
 }
 
-// ReadFromCheckpoint reads all entries from the last checkpoint
+// ReadFromCheckpoint reads all entries from the last checkpoint onwards.
+//
+// This method scans all segments and returns only entries from the most recent
+// checkpoint forward, discarding earlier entries. This enables faster recovery
+// by replaying only the necessary entries to restore state.
+//
+// If no checkpoint is found, all entries are returned (equivalent to ReadAll).
+//
+// This method is safe to call while the WAL is actively being written to.
 func (w *WAL) ReadFromCheckpoint() ([]*WAL_Entry, error) {
 	segments, err := w.segmentMgr.ListSegments()
 	if err != nil {

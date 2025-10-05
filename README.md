@@ -603,6 +603,7 @@ cd example && make all
 
 ## Documentation
 
+- [API Documentation](https://pkg.go.dev/github.com/wizenheimer/wal) - Complete API reference on pkg.go.dev
 - [ARCHITECTURE.md](docs/ARCHITECTURE.md) - Detailed component architecture
 - [CONCEPT.md](docs/CONCEPT.md) - Core concepts and operations
 - [TIMELINE.md](docs/TIMELINE.md) - Visual timelines and examples
