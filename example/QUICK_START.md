@@ -1,0 +1,148 @@
+# Quick Start Guide
+
+## Running Examples
+
+### Using Make (Recommended)
+
+```bash
+# Show all available commands
+make help
+
+# Run all examples
+make
+
+# Run individual examples
+make basic
+make checkpoint
+make streaming
+make error_handling
+
+# Build all examples
+make build
+
+# Clean up
+make clean
+```
+
+### Command Line Options
+
+All examples support the `-keep` flag to preserve WAL files after execution:
+
+```bash
+# Run and keep the WAL files for inspection
+cd basic && go run main.go -keep
+cd checkpoint && go run main.go -keep
+cd streaming && go run main.go -keep
+cd error_handling && go run main.go -keep
+```
+
+### Manual Execution
+
+```bash
+# Run examples individually
+cd basic && go run main.go
+cd checkpoint && go run main.go
+cd streaming && go run main.go
+cd error_handling && go run main.go
+```
+
+## Example Overview
+
+| Example             | Purpose                  | Key Features                                                                            |
+| ------------------- | ------------------------ | --------------------------------------------------------------------------------------- |
+| **basic/**          | Introduction to WAL      | • Write entries<br>• Flush & sync<br>• Read all entries                                 |
+| **checkpoint/**     | Checkpoint functionality | • Create checkpoints<br>• Recovery from checkpoint<br>• Skip old entries                |
+| **streaming/**      | Large dataset handling   | • Write 100 entries<br>• Periodic flushing<br>• Stream reading<br>• Performance metrics |
+| **error_handling/** | Error validation         | • CRC validation<br>• Corrupt entry detection<br>• Empty file handling                  |
+
+## What You'll Learn
+
+### 1. Basic Usage (5 minutes)
+
+- How to create a WAL file
+- Writing entries with CRC checksums
+- Reading entries back
+- Basic file operations
+
+### 2. Checkpoints (10 minutes)
+
+- Why checkpoints matter
+- Creating checkpoint entries
+- Recovery optimization
+- Reducing replay time
+
+### 3. Streaming (10 minutes)
+
+- Handling large datasets
+- Buffer management
+- Memory-efficient reading
+- Performance monitoring
+
+### 4. Error Handling (15 minutes)
+
+- CRC validation
+- Corruption detection
+- Graceful error handling
+- Recovery strategies
+
+## Quick Code Example
+
+```go
+package main
+
+import (
+    "github.com/wizenheimer/wal"
+    "os"
+)
+
+func main() {
+    // Create writer
+    file, _ := os.Create("app.wal")
+    writer := wal.NewBinaryEntryWriter(file)
+
+    // Write entry
+    entry := &wal.WAL_Entry{
+        LogSequenceNumber: 1,
+        Data:              []byte("Hello WAL"),
+    }
+    writer.WriteEntry(entry)
+    writer.Sync()
+    file.Close()
+
+    // Read entries
+    file, _ = os.Open("app.wal")
+    entries, _ := wal.ReadAllEntries(file)
+    file.Close()
+}
+```
+
+## Next Steps
+
+1. **Run all examples**: `make all`
+2. **Read the detailed README.md**
+3. **Experiment with the code**
+4. **Integrate into your application**
+
+## Troubleshooting
+
+**Import errors?**
+
+```bash
+go mod tidy
+```
+
+**Can't run examples?**
+
+```bash
+# Make sure you're in the example directory
+cd /path/to/wal/example
+make basic
+```
+
+**Want to see the code?**
+
+```bash
+# Each example is in its own directory
+cat basic/main.go
+cat checkpoint/main.go
+```
