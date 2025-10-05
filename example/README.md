@@ -15,7 +15,9 @@ example/
 │   └── main.go
 ├── error_handling/              # Error handling and validation
 │   └── main.go
-└── segment_manager/             # Segment management operations
+├── segment_manager/             # Segment management operations
+│   └── main.go
+└── wal_api/                     # High-level WAL API usage
     └── main.go
 ```
 
@@ -119,6 +121,40 @@ go run main.go -keep
 - Improve performance by distributing I/O across segments
 - Archive old data without affecting active segments
 
+### 6. WAL API (`wal_api/`)
+
+Demonstrates the high-level WAL API that combines all features into a production-ready interface:
+
+- Opening and configuring a WAL with custom options
+- Writing regular entries with automatic LSN management
+- Creating checkpoint entries
+- Automatic segment rotation based on size limits
+- Background syncing at configurable intervals
+- Reading all entries or from last checkpoint
+- Crash recovery simulation
+- Segment lifecycle management
+
+**Run:**
+
+```bash
+cd wal_api
+go run main.go
+
+# Keep WAL files after execution for inspection
+go run main.go -keep
+```
+
+**Key Concept:** The WAL API provides a complete, production-ready interface that handles:
+
+- Automatic LSN (Log Sequence Number) generation and tracking
+- Background syncing to disk at regular intervals
+- Automatic segment rotation when size limits are reached
+- Checkpoint-based recovery for faster startup
+- Thread-safe operations with proper locking
+- Graceful shutdown and resource cleanup
+
+This is the **recommended way** to use the WAL library in production applications.
+
 ## Core Concepts
 
 ### WAL Entry Structure
@@ -194,16 +230,17 @@ cd checkpoint && go run main.go && cd ..
 cd streaming && go run main.go && cd ..
 cd error_handling && go run main.go && cd ..
 cd segment_manager && go run main.go && cd ..
+cd wal_api && go run main.go && cd ..
 
 # Or use a loop
-for dir in basic checkpoint streaming error_handling segment_manager; do
+for dir in basic checkpoint streaming error_handling segment_manager wal_api; do
     echo "Running $dir example..."
     (cd "$dir" && go run main.go)
     echo ""
 done
 
 # Keep WAL files for inspection
-for dir in basic checkpoint streaming error_handling segment_manager; do
+for dir in basic checkpoint streaming error_handling segment_manager wal_api; do
     echo "Running $dir example (keeping files)..."
     (cd "$dir" && go run main.go -keep)
     echo ""
@@ -215,7 +252,36 @@ make all
 
 ## Integration with Your Application
 
-To use the WAL in your application:
+### Using the High-Level WAL API (Recommended)
+
+```go
+import "github.com/wizenheimer/wal"
+
+// Create segment manager
+segmentMgr, _ := wal.NewFileSegmentManager("./wal_data")
+
+// Configure and open WAL
+opts := wal.DefaultWALOptions()
+opts.MaxSegmentSize = 64 * 1024 * 1024  // 64MB
+opts.MaxSegments = 10
+w, _ := wal.Open(segmentMgr, opts)
+defer w.Close()
+
+// Write entries (LSN managed automatically)
+lsn, _ := w.WriteEntry([]byte("my data"))
+
+// Write checkpoint periodically
+checkpointLSN, _ := w.WriteCheckpoint([]byte("state snapshot"))
+
+// Recovery: Read from last checkpoint
+entries, _ := w.ReadFromCheckpoint()
+for _, entry := range entries {
+    // Replay entry to restore state
+    restoreState(entry.Data)
+}
+```
+
+### Using Low-Level Binary Entry API
 
 ```go
 import "github.com/wizenheimer/wal"
@@ -225,11 +291,7 @@ file, _ := os.OpenFile("app.wal", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 writer := wal.NewBinaryEntryWriter(file)
 
 // Write an entry
-entry := &wal.WAL_Entry{
-    LogSequenceNumber: getNextLSN(),
-    Data:              serializeYourData(),
-}
-entry.CRC = calculateCRC(entry.Data, entry.LogSequenceNumber)
+entry := wal.NewEntry(getNextLSN(), serializeYourData())
 writer.WriteEntry(entry)
 writer.Sync()
 
@@ -268,11 +330,11 @@ Each example is a standalone Go program. To build them:
 make build
 
 # Or build manually with a loop
-for dir in basic checkpoint streaming error_handling segment_manager; do
+for dir in basic checkpoint streaming error_handling segment_manager wal_api; do
     (cd "$dir" && go build -o "${dir}_example")
 done
 
 # Or build individually
 cd basic && go build -o basic_example
-cd segment_manager && go build -o segment_manager_example
+cd wal_api && go build -o wal_api_example
 ```

@@ -1,7 +1,7 @@
-.PHONY: all basic checkpoint streaming error_handling segment_manager clean help
+.PHONY: all basic checkpoint streaming error_handling segment_manager wal_api clean help
 
 # Run all examples
-all: basic checkpoint streaming error_handling segment_manager
+all: basic checkpoint streaming error_handling segment_manager wal_api
 
 # Run individual examples
 basic:
@@ -29,6 +29,11 @@ segment_manager:
 	@cd segment_manager && go run main.go
 	@echo ""
 
+wal_api:
+	@echo "=== Running WAL API Example ==="
+	@cd wal_api && go run main.go
+	@echo ""
+
 # Build all examples
 build:
 	@echo "Building all examples..."
@@ -37,6 +42,7 @@ build:
 	@cd streaming && go build -o streaming_example
 	@cd error_handling && go build -o error_handling_example
 	@cd segment_manager && go build -o segment_manager_example
+	@cd wal_api && go build -o wal_api_example
 	@echo "✓ All examples built successfully"
 
 # Clean up built binaries and generated WAL files
@@ -47,8 +53,10 @@ clean:
 	@rm -f streaming/streaming_example
 	@rm -f error_handling/error_handling_example
 	@rm -f segment_manager/segment_manager_example
+	@rm -f wal_api/wal_api_example
 	@find . -name "*.wal" -type f -delete
 	@rm -rf */example_segments
+	@rm -rf */wal_api_example
 	@echo "✓ Cleanup complete"
 
 # Show help
@@ -60,6 +68,7 @@ help:
 	@echo "  streaming       - Run streaming example"
 	@echo "  error_handling  - Run error handling example"
 	@echo "  segment_manager - Run segment manager example"
+	@echo "  wal_api         - Run WAL API example (high-level API)"
 	@echo "  build           - Build all examples"
 	@echo "  clean           - Remove built binaries and WAL files"
 	@echo "  help            - Show this help message"
