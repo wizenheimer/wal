@@ -16,6 +16,7 @@ make basic
 make checkpoint
 make streaming
 make error_handling
+make segment_manager
 
 # Build all examples
 make build
@@ -34,6 +35,7 @@ cd basic && go run main.go -keep
 cd checkpoint && go run main.go -keep
 cd streaming && go run main.go -keep
 cd error_handling && go run main.go -keep
+cd segment_manager && go run main.go -keep
 ```
 
 ### Manual Execution
@@ -44,16 +46,18 @@ cd basic && go run main.go
 cd checkpoint && go run main.go
 cd streaming && go run main.go
 cd error_handling && go run main.go
+cd segment_manager && go run main.go
 ```
 
 ## Example Overview
 
-| Example             | Purpose                  | Key Features                                                                            |
-| ------------------- | ------------------------ | --------------------------------------------------------------------------------------- |
-| **basic/**          | Introduction to WAL      | • Write entries<br>• Flush & sync<br>• Read all entries                                 |
-| **checkpoint/**     | Checkpoint functionality | • Create checkpoints<br>• Recovery from checkpoint<br>• Skip old entries                |
-| **streaming/**      | Large dataset handling   | • Write 100 entries<br>• Periodic flushing<br>• Stream reading<br>• Performance metrics |
-| **error_handling/** | Error validation         | • CRC validation<br>• Corrupt entry detection<br>• Empty file handling                  |
+| Example              | Purpose                  | Key Features                                                                            |
+| -------------------- | ------------------------ | --------------------------------------------------------------------------------------- |
+| **basic/**           | Introduction to WAL      | • Write entries<br>• Flush & sync<br>• Read all entries                                 |
+| **checkpoint/**      | Checkpoint functionality | • Create checkpoints<br>• Recovery from checkpoint<br>• Skip old entries                |
+| **streaming/**       | Large dataset handling   | • Write 100 entries<br>• Periodic flushing<br>• Stream reading<br>• Performance metrics |
+| **error_handling/**  | Error validation         | • CRC validation<br>• Corrupt entry detection<br>• Empty file handling                  |
+| **segment_manager/** | Segment management       | • Multiple segments<br>• Segment rotation<br>• Size tracking<br>• Sequential reads      |
 
 ## What You'll Learn
 
@@ -84,6 +88,13 @@ cd error_handling && go run main.go
 - Corruption detection
 - Graceful error handling
 - Recovery strategies
+
+### 5. Segment Management (15 minutes)
+
+- Organizing WAL into multiple files
+- Segment creation and deletion
+- Implementing rotation policies
+- Reading across segments
 
 ## Quick Code Example
 

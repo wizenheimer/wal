@@ -1,7 +1,7 @@
-.PHONY: all basic checkpoint streaming error_handling clean help
+.PHONY: all basic checkpoint streaming error_handling segment_manager clean help
 
 # Run all examples
-all: basic checkpoint streaming error_handling
+all: basic checkpoint streaming error_handling segment_manager
 
 # Run individual examples
 basic:
@@ -24,6 +24,11 @@ error_handling:
 	@cd error_handling && go run main.go
 	@echo ""
 
+segment_manager:
+	@echo "=== Running Segment Manager Example ==="
+	@cd segment_manager && go run main.go
+	@echo ""
+
 # Build all examples
 build:
 	@echo "Building all examples..."
@@ -31,6 +36,7 @@ build:
 	@cd checkpoint && go build -o checkpoint_example
 	@cd streaming && go build -o streaming_example
 	@cd error_handling && go build -o error_handling_example
+	@cd segment_manager && go build -o segment_manager_example
 	@echo "✓ All examples built successfully"
 
 # Clean up built binaries and generated WAL files
@@ -40,7 +46,9 @@ clean:
 	@rm -f checkpoint/checkpoint_example
 	@rm -f streaming/streaming_example
 	@rm -f error_handling/error_handling_example
+	@rm -f segment_manager/segment_manager_example
 	@find . -name "*.wal" -type f -delete
+	@rm -rf */example_segments
 	@echo "✓ Cleanup complete"
 
 # Show help
@@ -51,6 +59,7 @@ help:
 	@echo "  checkpoint      - Run checkpoint example"
 	@echo "  streaming       - Run streaming example"
 	@echo "  error_handling  - Run error handling example"
+	@echo "  segment_manager - Run segment manager example"
 	@echo "  build           - Build all examples"
 	@echo "  clean           - Remove built binaries and WAL files"
 	@echo "  help            - Show this help message"

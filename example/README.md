@@ -13,7 +13,9 @@ example/
 │   └── main.go
 ├── streaming/                   # Streaming large datasets
 │   └── main.go
-└── error_handling/              # Error handling and validation
+├── error_handling/              # Error handling and validation
+│   └── main.go
+└── segment_manager/             # Segment management operations
     └── main.go
 ```
 
@@ -87,6 +89,35 @@ Shows error handling and validation:
 cd error_handling
 go run main.go
 ```
+
+### 5. Segment Manager (`segment_manager/`)
+
+Demonstrates segment management for organizing WAL data across multiple files:
+
+- Creating and managing multiple segments
+- Writing entries to different segments
+- Listing and reading from segments
+- Checking segment sizes
+- Appending to existing segments
+- Segment rotation (deleting old segments)
+- Sequential reading across segments
+
+**Run:**
+
+```bash
+cd segment_manager
+go run main.go
+
+# Keep segment files after execution for inspection
+go run main.go -keep
+```
+
+**Key Concept:** Segment management allows you to organize your WAL into multiple files, making it easier to:
+
+- Implement log rotation and cleanup policies
+- Reduce memory usage by only loading relevant segments
+- Improve performance by distributing I/O across segments
+- Archive old data without affecting active segments
 
 ## Core Concepts
 
@@ -162,20 +193,24 @@ cd basic && go run main.go && cd ..
 cd checkpoint && go run main.go && cd ..
 cd streaming && go run main.go && cd ..
 cd error_handling && go run main.go && cd ..
+cd segment_manager && go run main.go && cd ..
 
 # Or use a loop
-for dir in basic checkpoint streaming error_handling; do
+for dir in basic checkpoint streaming error_handling segment_manager; do
     echo "Running $dir example..."
     (cd "$dir" && go run main.go)
     echo ""
 done
 
 # Keep WAL files for inspection
-for dir in basic checkpoint streaming error_handling; do
+for dir in basic checkpoint streaming error_handling segment_manager; do
     echo "Running $dir example (keeping files)..."
     (cd "$dir" && go run main.go -keep)
     echo ""
 done
+
+# Or use the Makefile
+make all
 ```
 
 ## Integration with Your Application
@@ -229,11 +264,15 @@ entries, checkpointLSN, _ := wal.ReadEntriesWithCheckpoint(file)
 Each example is a standalone Go program. To build them:
 
 ```bash
-# Build all examples
-for dir in basic checkpoint streaming error_handling; do
+# Build all examples using Make
+make build
+
+# Or build manually with a loop
+for dir in basic checkpoint streaming error_handling segment_manager; do
     (cd "$dir" && go build -o "${dir}_example")
 done
 
 # Or build individually
 cd basic && go build -o basic_example
+cd segment_manager && go build -o segment_manager_example
 ```
