@@ -54,14 +54,14 @@ cd wal_api && go run main.go
 
 ## Example Overview
 
-| Example              | Purpose                   | Key Features                                                                               |
-| -------------------- | ------------------------- | ------------------------------------------------------------------------------------------ |
-| **basic/**           | Introduction to WAL       | • Write entries<br>• Flush & sync<br>• Read all entries                                    |
-| **checkpoint/**      | Checkpoint functionality  | • Create checkpoints<br>• Recovery from checkpoint<br>• Skip old entries                   |
-| **streaming/**       | Large dataset handling    | • Write 100 entries<br>• Periodic flushing<br>• Stream reading<br>• Performance metrics    |
-| **error_handling/**  | Error validation          | • CRC validation<br>• Corrupt entry detection<br>• Empty file handling                     |
-| **segment_manager/** | Segment management        | • Multiple segments<br>• Segment rotation<br>• Size tracking<br>• Sequential reads         |
-| **wal_api/**         | High-level production API | • Automatic LSN management<br>• Background sync<br>• Auto rotation<br>• Complete lifecycle |
+| Example              | Purpose                  | Key Features                                                                               |
+| -------------------- | ------------------------ | ------------------------------------------------------------------------------------------ |
+| **basic/**           | Introduction to WAL      | • Write entries<br>• Flush & sync<br>• Read all entries                                    |
+| **checkpoint/**      | Checkpoint functionality | • Create checkpoints<br>• Recovery from checkpoint<br>• Skip old entries                   |
+| **streaming/**       | Large dataset handling   | • Write 100 entries<br>• Periodic flushing<br>• Stream reading<br>• Performance metrics    |
+| **error_handling/**  | Error validation         | • CRC validation<br>• Corrupt entry detection<br>• Empty file handling                     |
+| **segment_manager/** | Segment management       | • Multiple segments<br>• Segment rotation<br>• Size tracking<br>• Sequential reads         |
+| **wal_api/**         | High-level API           | • Automatic LSN management<br>• Background sync<br>• Auto rotation<br>• Complete lifecycle |
 
 ## What You'll Learn
 
@@ -102,7 +102,7 @@ cd wal_api && go run main.go
 
 ### 6. WAL API (15 minutes)
 
-- High-level production-ready API
+- High-level API
 - Automatic LSN management
 - Background syncing
 - Automatic segment rotation

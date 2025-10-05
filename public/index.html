@@ -223,8 +223,8 @@
     <div class="header">
       <h1>WAL</h1>
       <p>
-        A production-ready, high-performance Write-Ahead Log (WAL) library for
-        Go, designed for building reliable and durable data systems.
+        A high-performance Write-Ahead Log (WAL) library for Go, designed for
+        building reliable and durable data systems.
       </p>
       <div style="display: flex; gap: 1rem">
         <a href="https://github.com/wizenheimer/wal" class="header-button"
@@ -503,7 +503,7 @@ func (sm *StateMachine) Apply(command Command) error {
       </tr>
       <tr>
         <td></td>
-        <td>Production</td>
+        <td>Deployment</td>
         <td>20-50 segments</td>
       </tr>
       <tr>
@@ -658,7 +658,7 @@ opts.SyncInterval = 5 * time.Second</code></pre>
         <strong>error_handling/</strong> - CRC validation and error recovery
       </li>
       <li><strong>segment_manager/</strong> - Multi-segment management</li>
-      <li><strong>wal_api/</strong> - Complete production example</li>
+      <li><strong>wal_api/</strong> - Complete example</li>
     </ul>
 
     <h2>Documentation</h2>

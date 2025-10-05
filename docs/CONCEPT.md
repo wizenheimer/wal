@@ -775,7 +775,7 @@ Old data beyond 320 MB is deleted!
 **Recommendation:**
 
 - **Development**: 3-5 segments (limited disk)
-- **Production**: 20-50 segments (retain history)
+- **Deployment**: 20-50 segments (retain history)
 - **Archival**: Infinite + archive old segments to S3
 
 ### SyncInterval
@@ -817,7 +817,7 @@ Old data beyond 320 MB is deleted!
 
 **Recommendation:**
 
-- **Production**: Always `true`
+- **Deployment**: Always `true`
 - **Testing**: `false` for speed
 - **Development**: `false` unless testing recovery
 

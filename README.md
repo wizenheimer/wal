@@ -1,6 +1,6 @@
 # WAL - Write-Ahead Log Implementation in Go
 
-A production-ready, high-performance Write-Ahead Log (WAL) library for Go, designed for building reliable and durable data systems.
+A high-performance Write-Ahead Log (WAL) library for Go, designed for building reliable and durable data systems.
 
 [![Go Version](https://img.shields.io/badge/go-1.24.2+-blue.svg)](https://golang.org)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
@@ -274,7 +274,7 @@ type WALOptions struct {
 **MaxSegments:**
 
 - Development: 3-5 segments (limited disk)
-- Production: 20-50 segments (retain history)
+- Deployment: 20-50 segments (retain history)
 - Archival: Larger number + archive old segments
 
 **SyncInterval:**
@@ -285,7 +285,7 @@ type WALOptions struct {
 
 **EnableFsync:**
 
-- Production: Always `true`
+- Deployment: Always `true`
 - Testing: `false` for speed
 - Development: `false` unless testing recovery
 
@@ -388,7 +388,7 @@ See the [example/](example/) directory for comprehensive examples:
 - **streaming/** - Efficient streaming for large datasets
 - **error_handling/** - CRC validation and error recovery
 - **segment_manager/** - Multi-segment management
-- **wal_api/** - Complete production example
+- **wal_api/** - Complete example
 
 Run examples:
 

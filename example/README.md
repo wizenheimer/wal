@@ -123,7 +123,7 @@ go run main.go -keep
 
 ### 6. WAL API (`wal_api/`)
 
-Demonstrates the high-level WAL API that combines all features into a production-ready interface:
+Demonstrates the high-level WAL API that combines all features:
 
 - Opening and configuring a WAL with custom options
 - Writing regular entries with automatic LSN management
@@ -144,7 +144,7 @@ go run main.go
 go run main.go -keep
 ```
 
-**Key Concept:** The WAL API provides a complete, production-ready interface that handles:
+**Key Concept:** The WAL API provides a complete interface that handles:
 
 - Automatic LSN (Log Sequence Number) generation and tracking
 - Background syncing to disk at regular intervals
@@ -153,7 +153,7 @@ go run main.go -keep
 - Thread-safe operations with proper locking
 - Graceful shutdown and resource cleanup
 
-This is the **recommended way** to use the WAL library in production applications.
+This is the **recommended way** to use the WAL library in your applications.
 
 ## Core Concepts
 
